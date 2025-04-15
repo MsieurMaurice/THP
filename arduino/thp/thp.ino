@@ -43,6 +43,7 @@ void setup() {
     pinMode(BUTTON_SCREEN_OFF, INPUT_PULLUP);
     pinMode(LED_PIN, OUTPUT);
     Serial.begin(115200);
+    while(!Serial.available()){}
 
     if (!bme.begin(0x76)) {
         Serial.println("Erreur capteur BME280");
@@ -70,27 +71,35 @@ void setup() {
     display.setTextSize(1);
     display.setTextColor(SH110X_WHITE);
     createNewLogFile();
-    lastScreenOnTime = 0;
+    lastScreenOnTime = rtc.now().unixtime();
+    lastLogTime = rtc.now().unixtime();
+    Serial.print("let s go! ");
+    Serial.println(lastLogTime);
 }
 
 void loop() {
     DateTime now = rtc.now();
     if (now.day() != lastRecordedDay) {
+        Serial.println("Close last file and Newfile creation");
         closeLogFile();
         createNewLogFile();
     }
 
     if (isIntervalElapsed(lastLogTime, MEASURE_INTERVAL)) {
         lastLogTime = rtc.now().unixtime();
+        Serial.print("Logdata: ");
+        Serial.println(lastLogTime);
         logData();
     }
 
     if ((!lowBatteryAlert && isIntervalElapsed(lastScreenOnTime, SCREEN_TIMEOUT) && screenActive) || (digitalRead(BUTTON_SCREEN_OFF) == LOW)) {
+        Serial.println("turn OFF screen");
         turnOffDisplay();
 
     }
 
     if (digitalRead(BUTTON_SCREEN) == LOW && !screenActive) {
+        Serial.println("turn ON screen");
         turnOnDisplay();
 
     }
@@ -99,10 +108,13 @@ void loop() {
         if (!screenActive)
         {
             turnOnDisplay();
+
         }
+        Serial.println("Stop program");
         closeLogFile();
         stopProgram();
     }
+
 }
 
 void createNewLogFile() {
@@ -208,5 +220,5 @@ void stopProgram() {
 
 bool isIntervalElapsed(unsigned long lastTimestamp, unsigned long intervalMs) {
     unsigned long currentTime = rtc.now().unixtime();
-    return (currentTime - lastTimestamp >= intervalMs / 1000);
+    return (currentTime - lastTimestamp >= intervalMs);
 }
